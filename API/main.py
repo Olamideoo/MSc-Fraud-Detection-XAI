@@ -1,3 +1,4 @@
+from pathlib import Path
 from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
@@ -5,7 +6,7 @@ import pandas as pd
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-MODEL_PATH = BASE_DIR / "MODELS" / "final_lightgbm_model.joblib"
+MODEL_PATH = BASE_DIR / "Models" / "final_lightgbm_model.joblib"
 
 model = joblib.load(MODEL_PATH)
 
@@ -17,7 +18,7 @@ app = FastAPI( title="Fraud Detection API",
 
 
 # Load trained model
-model = joblib.load("MODELS/final_lightgbm_model.joblib")
+model = joblib.load("Models/final_lightgbm_model.joblib")
 
 # Load model feature names
 feature_names = joblib.load("Models/model_feature_names.joblib")
