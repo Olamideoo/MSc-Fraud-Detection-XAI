@@ -6,9 +6,11 @@ import pandas as pd
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-MODEL_PATH = BASE_DIR / "Models" / "final_lightgbm_model.joblib"
+MODEL_PATH = BASE_DIR / "MODELS" / "final_lightgbm_model.joblib"
+FEATURE_NAMES_PATH = BASE_DIR / "MODELS" / "model_feature_names.joblib"
 
 model = joblib.load(MODEL_PATH)
+feature_names = joblib.load(FEATURE_NAMES_PATH)
 
 
 # Create FastAPI application
@@ -17,11 +19,6 @@ app = FastAPI( title="Fraud Detection API",
     version="1.0")
 
 
-# Load trained model
-model = joblib.load("Models/final_lightgbm_model.joblib")
-
-# Load model feature names
-feature_names = joblib.load("Models/model_feature_names.joblib")
 
 
 # Input schema
