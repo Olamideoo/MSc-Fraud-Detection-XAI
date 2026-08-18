@@ -635,11 +635,9 @@ if st.button(
     try:
 
         response = requests.post(
-            "http://127.0.0.1:8000/predict",
+            "https://msc-fraud-detection-xai.onrender.com/predict",
             json=transaction_data,
-            timeout=10
-        )
-
+            timeout=10)
 
         # ====================================================
         # SUCCESSFUL RESPONSE
@@ -1097,9 +1095,8 @@ if st.button(
 
         st.error(
             "Could not connect to the Fraud Detection API. "
-            "Please make sure FastAPI is running on "
-            "http://127.0.0.1:8000."
-        )
+            
+         "Please check that the deployed Fraud Detection API is available.")
 
 
     # ========================================================
