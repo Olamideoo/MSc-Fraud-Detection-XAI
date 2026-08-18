@@ -46,7 +46,6 @@ def load_model():
 
 model, feature_names = load_model()
 
-
 # Make sure feature names are stored as a list
 feature_names = list(feature_names)
 
@@ -124,14 +123,7 @@ def create_lime_background():
 
 
     # --------------------------------------------------------
-    # IMPORTANT:
-    # Convert one-hot encoded names to the same format
-    # expected by the trained model and FastAPI.
-    #
-    # Example:
-    # payment_channel_Mobile App
-    # becomes
-    # payment_channel_Mobile_App
+    # Make feature names match trained model
     # --------------------------------------------------------
 
     X.columns = (
@@ -150,7 +142,6 @@ def create_lime_background():
         columns=feature_names,
         fill_value=0
     )
-
 
     return X
 
@@ -448,9 +439,6 @@ if st.button(
 
     # ========================================================
     # ONE-HOT ENCODING
-    #
-    # IMPORTANT:
-    # These names MUST match the FastAPI/Pydantic schema.
     # ========================================================
 
     payment_mobile_app = int(
@@ -465,7 +453,6 @@ if st.button(
         payment_channel == "Web Banking"
     )
 
-
     authentication_otp = int(
         authentication_type == "OTP"
     )
@@ -475,15 +462,13 @@ if st.button(
     )
 
     authentication_two_factor = int(
-        authentication_type == "Two-Factor Authentication"
+        authentication_type ==
+        "Two-Factor Authentication"
     )
 
 
     # ========================================================
     # CREATE DATA FOR FASTAPI
-    #
-    # IMPORTANT:
-    # The field names here must exactly match the API schema.
     # ========================================================
 
     transaction_data = {
@@ -557,12 +542,6 @@ if st.button(
         "high_device_risk":
             high_device_risk,
 
-
-        # ----------------------------------------------------
-        # PAYMENT CHANNEL
-        # EXACT API FIELD NAMES
-        # ----------------------------------------------------
-
         "payment_channel_Mobile_App":
             payment_mobile_app,
 
@@ -571,12 +550,6 @@ if st.button(
 
         "payment_channel_Web_Banking":
             payment_web_banking,
-
-
-        # ----------------------------------------------------
-        # AUTHENTICATION TYPE
-        # EXACT API FIELD NAMES
-        # ----------------------------------------------------
 
         "authentication_type_OTP":
             authentication_otp,
@@ -598,9 +571,9 @@ if st.button(
     )
 
 
-    # --------------------------------------------------------
-    # Force exact model feature order
-    # --------------------------------------------------------
+    # ========================================================
+    # FORCE EXACT MODEL FEATURE ORDER
+    # ========================================================
 
     input_df = input_df.reindex(
         columns=feature_names,
@@ -609,10 +582,12 @@ if st.button(
 
 
     # ========================================================
-    # OPTIONAL DEBUG INFORMATION
+    # VIEW FEATURES SENT TO API
     # ========================================================
 
-    with st.expander("🔧 View Features Sent to API"):
+    with st.expander(
+        "🔧 View Features Sent to API"
+    ):
 
         st.json(transaction_data)
 
@@ -636,7 +611,9 @@ if st.button(
         response = requests.post(
             "https://msc-fraud-detection-xai.onrender.com/predict",
             json=transaction_data,
-            timeout=10)
+            timeout=30
+        )
+
 
         # ====================================================
         # SUCCESSFUL RESPONSE
@@ -652,10 +629,82 @@ if st.button(
 
 
             # =================================================
-            # DISPLAY PREDICTION
+            # GET MODEL RESULT
             # =================================================
 
-            if result["prediction"] == "Fraud":
+            fraud_probability = float(
+                result["fraud_probability"]
+            )
+
+            prediction = result["prediction"]
+
+
+            # =================================================
+            # RISK LEVEL
+            #
+            # IMPORTANT:
+            # This does NOT change the model prediction.
+            # It is only a dashboard interpretation of
+            # the returned fraud probability.
+            # =================================================
+
+            if fraud_probability >= 0.70:
+
+                risk_level = "High"
+
+            elif fraud_probability >= 0.40:
+
+                risk_level = "Elevated"
+
+            elif fraud_probability >= 0.20:
+
+                risk_level = "Moderate"
+
+            else:
+
+                risk_level = "Low"
+
+
+            # =================================================
+            # MODEL ASSESSMENT
+            # =================================================
+
+            st.subheader(
+                "📋 Model Assessment"
+            )
+
+            result_col1, result_col2, result_col3 = st.columns(3)
+
+
+            with result_col1:
+
+                st.metric(
+                    "Model Classification",
+                    prediction
+                )
+
+
+            with result_col2:
+
+                st.metric(
+                    "Fraud Probability",
+                    f"{fraud_probability * 100:.2f}%"
+                )
+
+
+            with result_col3:
+
+                st.metric(
+                    "Risk Level",
+                    risk_level
+                )
+
+
+            # =================================================
+            # INTERPRETATION OF RESULT
+            # =================================================
+
+            if prediction == "Fraud":
 
                 st.error(
                     "⚠️ FRAUD DETECTED"
@@ -664,22 +713,47 @@ if st.button(
             else:
 
                 st.success(
-                    "✅ LEGITIMATE TRANSACTION"
+                    "✅ MODEL CLASSIFICATION: LEGITIMATE"
                 )
 
 
             # =================================================
-            # FRAUD PROBABILITY
+            # RISK MESSAGE
             # =================================================
 
-            fraud_probability = float(
-                result["fraud_probability"]
-            )
+            if risk_level == "High":
 
-            st.metric(
-                "Fraud Probability",
-                f"{fraud_probability * 100:.2f}%"
-            )
+                st.warning(
+                    "The model's fraud probability is high. "
+                    "Although the classification is determined "
+                    "by the model, this transaction represents "
+                    "a high-risk case according to the dashboard "
+                    "risk bands."
+                )
+
+            elif risk_level == "Elevated":
+
+                st.warning(
+                    "The model classified this transaction as "
+                    f"{prediction.lower()}, but the predicted "
+                    "fraud probability indicates an elevated "
+                    "level of risk."
+                )
+
+            elif risk_level == "Moderate":
+
+                st.info(
+                    "The transaction has a moderate predicted "
+                    "fraud risk, although the model classification "
+                    f"is {prediction.lower()}."
+                )
+
+            else:
+
+                st.info(
+                    "The model indicates a relatively low "
+                    "fraud probability for this transaction."
+                )
 
 
             # =================================================
@@ -687,7 +761,13 @@ if st.button(
             # =================================================
 
             st.progress(
-                min(max(fraud_probability, 0.0), 1.0)
+                min(
+                    max(
+                        fraud_probability,
+                        0.0
+                    ),
+                    1.0
+                )
             )
 
 
@@ -699,7 +779,8 @@ if st.button(
                 "🔍 Why did the model make this prediction?"
             )
 
-            if result["prediction"] == "Fraud":
+
+            if prediction == "Fraud":
 
                 st.warning(
                     "The model classified this transaction as "
@@ -760,13 +841,15 @@ if st.button(
 
             if shap_values.ndim == 3:
 
-                # Binary classification output
-                # Select Fraud class
-                shap_values = shap_values[0, :, 1]
+                shap_values = (
+                    shap_values[0, :, 1]
+                )
 
             elif shap_values.ndim == 2:
 
-                shap_values = shap_values[0]
+                shap_values = (
+                    shap_values[0]
+                )
 
             else:
 
@@ -826,7 +909,11 @@ if st.button(
             # TOP SHAP FEATURES
             # =================================================
 
-            top_shap = shap_df.head(10).copy()
+            top_shap = (
+                shap_df
+                .head(10)
+                .copy()
+            )
 
 
             st.subheader(
@@ -839,9 +926,9 @@ if st.button(
             # =================================================
 
             st.bar_chart(
-                top_shap.set_index("Feature")[
-                    "SHAP Value"
-                ]
+                top_shap.set_index(
+                    "Feature"
+                )["SHAP Value"]
             )
 
 
@@ -1094,8 +1181,9 @@ if st.button(
 
         st.error(
             "Could not connect to the Fraud Detection API. "
-            
-         "Please check that the deployed Fraud Detection API is available.")
+            "Please check that the deployed Fraud Detection "
+            "API is available."
+        )
 
 
     # ========================================================
@@ -1117,7 +1205,8 @@ if st.button(
     except requests.exceptions.RequestException as e:
 
         st.error(
-            f"Request failed: {e}")
+            f"Request failed: {e}"
+        )
 
 
     # ========================================================
@@ -1128,4 +1217,5 @@ if st.button(
 
         st.error(
             "An error occurred while generating the "
-            f"prediction or explanation: {e}")
+            f"prediction or explanation: {e}"
+        )
