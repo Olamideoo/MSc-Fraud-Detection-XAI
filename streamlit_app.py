@@ -26,9 +26,8 @@ st.set_page_config(
 
 BASE_DIR = Path(__file__).resolve().parent
 
-MODEL_PATH = BASE_DIR / "Models" / "final_lightgbm_model.joblib"
-FEATURE_NAMES_PATH = BASE_DIR / "Models" / "model_feature_names.joblib"
-
+MODEL_PATH = BASE_DIR / "MODELS" / "final_lightgbm_model.joblib"
+FEATURE_NAMES_PATH = BASE_DIR / "MODELS" / "model_feature_names.joblib"
 DATA_PATH = BASE_DIR / "Data" / "cleaned_fraud_dataset.csv"
 
 
